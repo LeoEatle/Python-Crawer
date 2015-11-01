@@ -2,6 +2,7 @@
 
 import urllib2
 import re
+import codecs
 from bs4 import BeautifulSoup
 
 class Crawer:
@@ -16,6 +17,10 @@ class Crawer:
             print 'Error reason: ' + e.reason
         response = urllib2.urlopen(request)
         self.data = response.read()
+        #指定要保存数据的文件
+        self.fp = codecs.open("text.txt","w","utf-8")
+
+
 
     def findurl(self):
         self.link_list =re.findall(r"http\:.+?\.shtml" ,self.data) #使用正则表达式
@@ -47,6 +52,7 @@ class Crawer:
 
         for url in self.urls:
             print('\nnow read '+ url + ' \n')
+            self.fp.write('\nnow read '  + url + ' \n')
             try:
                 request = urllib2.Request(url)
             except urllib2.HTTPError, e:  #获取404错误或者其他错误
@@ -77,14 +83,18 @@ class Crawer:
                 for str in article:
                     if str.find('strong') is None and str.find('a') is None:#去除衍生阅读的链接
                         print(str.get_text())
+                        self.fp.write(str.get_text()+'\n')
                         continue
 
                  #爬取图片配文部分
                 for link in soup.select('.text-pic-tt > a' ): #销毁图片配文的链接节点
                     link.decompose()
                 article3 = soup.select(".text-pic-tt")
+                print "Now print description of images"
+                self.fp.write("Now print description of images"+'\n')
                 for string in article3:
                     print(string.get_text())
+                    self.fp.write(string.get_text()+'\n')
                 continue
 
 
@@ -93,6 +103,7 @@ class Crawer:
             for each_link in all_pages: #如果有其他页面,找到这个新闻的所有页面
                 num = num + 1
                 print "\nnow read page {0} \n".format(num)
+                self.fp.write('\nnow read page {0} \n'.format(num))
                 address = each_link.get('href')
                 request2 = urllib2.Request(address)
                 response2 = urllib2.urlopen(request2)
@@ -108,25 +119,30 @@ class Crawer:
                 for str in article2:
                      if str.find('strong') is None and str.find('a') is None:#去除衍生阅读的链接
                         print(str.get_text())
+                        self.fp.write(str.get_text()+'\n')
                         continue
 
                 #爬取图片配文部分,注意这是在有分几个页面的情况下
                 for link in soup2.select('.text-pic-tt > a' ): #销毁图片配文的链接节点
                     link.decompose()
                 article3 = soup2.select(".text-pic-tt")
+                print "Now print the description of images"
                 for str in article3:
                     print str.get_text()
+                    self.fp.write(str.get_text()+'\n')
 
 
     def output(self):
         for url in self.urls:
             print url
-        print '\n'
+            self.fp.write(url)
+            self.fp.write(('\n'))
         print len(self.urls)
+        self.fp.write("{0}".format(len(self.urls)))
+
 
 
 s = sohu_crawer = Crawer("http://mil.sohu.com/")
-
 sohu_crawer.usebs()
 sohu_crawer.output()
 sohu_crawer.analyse()
