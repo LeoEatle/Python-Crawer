@@ -23,6 +23,7 @@ class Crawer:
         self.data = response.read()
         # 指定要保存数据的文件
         self.fp = codecs.open("text.txt", "w", "utf-8")
+        self.key_file = codecs.open("key_word_file.txt","w","utf-8")
 
     def findurl(self):
         self.link_list = re.findall(r"http\:.+?\.shtml", self.data)  # 使用正则表达式
@@ -52,6 +53,8 @@ class Crawer:
 
     def analyse(self):
 
+        page_num = 0
+
         for url in self.urls:
             print('\nnow read ' + url + ' \n')
             #self.fp.write('\nnow read ' + url + ' \n')
@@ -63,7 +66,7 @@ class Crawer:
                 print 'Error code: {0} '.format(e.code)
                 continue
             except urllib2.URLError, e:
-                print 'Error reason: ' + e.reason
+                print 'Error reason: ' + format(e.reason)
                 continue
             except socket.error, e:
                 print('socket error')
@@ -73,6 +76,8 @@ class Crawer:
             soup = BeautifulSoup(content, "html.parser", from_encoding='gb18030')
             print soup.original_encoding
             # article = soup.findall(attrs={"itemprop": "articleBody"})这条完全失效
+
+            this_page = ""#这是这个页面爬出来的全部文字字符串
 
 
             all_pages = soup.select(".sele-con > ul > li > a")  # 检测是否有其他页面
@@ -87,6 +92,7 @@ class Crawer:
                     if str.find('strong') is None and str.find('a') is None:  # 去除衍生阅读的链接
                         print(str.get_text())
                         self.fp.write(str.get_text() + '\n')
+                        this_page = this_page+str.get_text()
                         continue
 
                         # 爬取图片配文部分
@@ -98,6 +104,11 @@ class Crawer:
                 for string in article3:
                     print(string.get_text())
                     self.fp.write(string.get_text() + '\n')
+                    this_page = this_page+string.get_text()
+
+                page_num+=1
+                self.extract(this_page,page_num)
+
                 continue
 
             num = 0
@@ -132,6 +143,7 @@ class Crawer:
                     if str.find('strong') is None and str.find('a') is None:  # 去除衍生阅读的链接
                         print(str.get_text())
                         self.fp.write(str.get_text() + '\n')
+                        this_page = this_page+str.get_text()
                         continue
 
                 # 爬取图片配文部分,注意这是在有分几个页面的情况下
@@ -142,6 +154,11 @@ class Crawer:
                 for str in article3:
                     print str.get_text()
                     self.fp.write(str.get_text() + '\n')
+                    this_page = this_page+str.get_text()
+
+
+            page_num+=1
+            self.extract(this_page,page_num)
 
     def output(self):
         for url in self.urls:
@@ -172,7 +189,9 @@ class Crawer:
         seg_list = jieba.cut(content, cut_all = False)
         print seg_list
         for word in seg_list:
+            word = u''.join(word.split())
             if not dic.has_key(word):
+
                 dic[word] = 0
             dic[word]+=1
 
@@ -180,18 +199,65 @@ class Crawer:
         num = 0
         for i in dic:
             num+=1
+            if num == 30:
+                continue
             info = str(num) + '\t' + i[0]+'\t'+str(i[1])
             print info
             file_writer.writelines(info)
         file_writer.close()
 
+    def extract(self,this_page,page_num):
+        print("This is the key words: ")
+        tags = jieba.analyse.extract_tags(this_page, top_num, withWeight=False)
+        output = "Website: "+str(page_num)+": "+"/".encode("utf-8").join(tags)
+        self.key_file.write(output+'\n')
+        print(output)
+
+
+
+
+
+
+
+
+def fen_sort():
+    print 'start dividing Chinese by jieba...'
+    file_writer = codecs.open(top_file,"w","utf-8")
+    content = codecs.open('text.txt','r','utf-8').read()
+    #output = re.sub(' .+','',content)#去掉所有英文描述
+    dic = {}
+    seg_list = jieba.cut(content, cut_all = True)
+    zhPattern = re.compile(u'[\u4e00-\u9fa5]+')
+    print seg_list
+    for word in seg_list:
+        match = zhPattern.search(word)#筛选出中文的词,因为分词结果包含了很多空格
+        if match:
+
+            if not dic.has_key(word):
+                dic[word] = 0
+            dic[word]+=1
+        if not match:
+            continue
+
+    dic = sorted(dic.items(),key = lambda asd:asd[1],reverse = True)
+    num = 0
+    for i in dic:
+        num+=1
+        if num == 31:
+            break
+        info = str(num) + '\t' + i[0]+'\t'+str(i[1])
+        print info
+        file_writer.writelines(info)
+    file_writer.close()
 
 top_num = 30
 top_file = "top_file.txt"
+
+key_word_file = "key_word_file.txt"
 
 s = sohu_crawer = Crawer("http://mil.sohu.com/")
 sohu_crawer.usebs()
 sohu_crawer.output()
 sohu_crawer.analyse()
-sohu_crawer.fenci2()
 sohu_crawer.fp.close()
+fen_sort()
