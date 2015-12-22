@@ -8,6 +8,8 @@ import jieba
 import jieba.analyse
 from bs4 import BeautifulSoup
 
+from gensim import corpora, models, similarities
+
 
 class Crawer:
     def __init__(self, baseUrl):
@@ -213,6 +215,68 @@ class Crawer:
         self.key_file.write(output+'\n')
         print(output)
 
+#现在开始重新写一个类用来寻找文章相似度
+
+class similar:
+    def __init__(self):
+        self.key_file_read = codecs.open(key_word_file, "r", encoding='utf-8')
+
+
+    def FindSimilar(self,pagenum):
+
+        self.result_list = []
+        for line in self.key_file_read.readlines():
+            getline = line[13:] #这里用str.spit(spit_sign, num)来把string转成LIST
+            self.result_list.append(getline.split("/",30))
+        #得到的分词结果构造字典
+        print(self.result_list)
+
+        dic = corpora.Dictionary(self.result_list)
+        print dic
+        print dic.token2id
+        #print dictionary
+        for word,index in dic.token2id.iteritems():
+            print(word + "number: " + str(index))
+        #生成语料库,这个语料库其实就是每个文章关键词列表形成的向量
+        corpus = [dic.doc2bow(text) for text in self.result_list]
+        print corpus
+
+        #进行TF-IDF变换
+        tfidf = models.TfidfModel(corpus)
+
+        # vec = [(0, 1), (4, 1)]
+        # print tfidf[vec]
+        corpus_tfidf = tfidf[corpus]
+        for doc in corpus_tfidf:
+            print doc
+
+
+
+        print('Now we are finding the similar essays of number '+str(pagenum))
+        #形成查询向量,其实就是在语料库CORPUS里找到那个文章关键词形成的TFIDF,注意是传递的参数pagenum - 1
+        vec = corpus_tfidf[pagenum-1]
+        #print("vec:" + vec)
+
+        #比较查询向量和result的所有成员
+        index = similarities.SparseMatrixSimilarity(tfidf[corpus], num_features=1733)
+        sims = index[vec]
+        #得到相似度序列
+        similarity_list =  list(enumerate(sims))
+        #按照第二个元素排序
+        sorted_list = sorted(similarity_list,key=lambda x:x[1],reverse=True)
+        #去除第一名(因为第一名就是它本身)
+        for num,element in sorted_list[1:6]:
+            count = 1
+
+            print("Number " + str(count) + ":" + "The page of number "+str(num)+ "  similarity: " + str(element))
+            count = count + 1
+
+
+
+
+
+
+
 
 
 
@@ -255,9 +319,13 @@ top_file = "top_file.txt"
 
 key_word_file = "key_word_file.txt"
 
-s = sohu_crawer = Crawer("http://mil.sohu.com/")
-sohu_crawer.usebs()
-sohu_crawer.output()
-sohu_crawer.analyse()
-sohu_crawer.fp.close()
-fen_sort()
+# sohu_crawer = Crawer("http://mil.sohu.com/")
+# sohu_crawer.usebs()
+# sohu_crawer.output()
+# sohu_crawer.analyse()
+# sohu_crawer.fp.close()
+# fen_sort()
+
+
+s = similar()
+s.FindSimilar(1)
